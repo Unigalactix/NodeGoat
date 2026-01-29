@@ -4,7 +4,9 @@
  * These tests capture the current behavior of the routing configuration module.
  * They are designed to establish a safety net before any refactoring.
  * 
- * DO NOT modify these tests to match new behavior - they document EXISTING behavior.
+ * IMPORTANT: These tests document EXISTING behavior as of the time they were written.
+ * When refactoring, if behavior changes are intentional, update these tests deliberately
+ * to reflect the new expected behavior. Do not modify tests just to make them pass.
  */
 
 const index = require('../../app/routes/index');
@@ -307,7 +309,7 @@ describe('app/routes/index.js - Characterization Tests', () => {
             expect(learnHandler.length).toBeGreaterThanOrEqual(2);
         });
 
-        test('/learn handler should redirect using req.query.url', () => {
+        test('/learn handler should redirect using unvalidated req.query.url (SECURITY VULNERABILITY)', () => {
             index(mockApp, mockDb);
             
             const mockReq = {
@@ -321,11 +323,13 @@ describe('app/routes/index.js - Characterization Tests', () => {
 
             learnHandler(mockReq, mockRes);
             
+            // This documents a known security vulnerability - open redirect
+            // The handler does not validate req.query.url before redirecting
             expect(mockRes.redirect).toHaveBeenCalledWith('http://example.com');
             expect(mockRes.redirect).toHaveBeenCalledTimes(1);
         });
 
-        test('/learn handler should redirect to undefined if query.url is not provided', () => {
+        test('/learn handler should redirect to undefined if query.url is not provided (SECURITY VULNERABILITY)', () => {
             index(mockApp, mockDb);
             
             const mockReq = {
@@ -337,6 +341,7 @@ describe('app/routes/index.js - Characterization Tests', () => {
 
             learnHandler(mockReq, mockRes);
             
+            // This documents current behavior - no validation of url parameter
             expect(mockRes.redirect).toHaveBeenCalledWith(undefined);
             expect(mockRes.redirect).toHaveBeenCalledTimes(1);
         });
@@ -367,13 +372,15 @@ describe('app/routes/index.js - Characterization Tests', () => {
             };
         });
 
-        test('should pass database instance to handler constructors', () => {
+        test('should pass database instance to handler constructors and call db.collection', () => {
             // This test verifies that handlers receive the db instance
-            // We can't directly test constructor calls, but we can verify
-            // the module doesn't throw when given a mock db
-            expect(() => {
-                index(mockApp, mockDb);
-            }).not.toThrow();
+            // and that db.collection is called during initialization
+            index(mockApp, mockDb);
+            
+            // Verify db.collection was called (handlers initialize their collections)
+            expect(mockDb.collection).toHaveBeenCalled();
+            // Multiple handlers should request their collections
+            expect(mockDb.collection.mock.calls.length).toBeGreaterThan(0);
         });
 
         test('should initialize SessionHandler', () => {
