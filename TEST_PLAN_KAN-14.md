@@ -12,7 +12,7 @@ Create characterization tests to capture current behavior before refactoring.
 Created comprehensive unit tests for `app/routes/session.js` in `test/unit/session-test.js`.
 
 ### Coverage
-All 8 public methods of SessionHandler class are now tested:
+All 8 public methods of SessionHandler class are now tested (plus 1 internal function tested indirectly):
 
 1. **isAdminUserMiddleware** (3 tests)
    - Redirects to /login when no userId in session
@@ -52,8 +52,9 @@ All 8 public methods of SessionHandler class are now tested:
    - Renders dashboard with user data when userId exists
    - Calls next() with error when getUserById fails
 
+#### Internal Functions
 9. **prepareUserData** (1 test)
-   - Generates random allocations for new user (tested via handleSignup)
+   - Generates random allocations for new user (tested indirectly via handleSignup)
 
 ### Test Results
 ✅ **29 tests passing**
