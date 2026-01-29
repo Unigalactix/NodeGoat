@@ -1,0 +1,5 @@
+{
+  "issueKey": "KAN-14",
+  "timestamp": "2026-01-29T23:14:36.595Z",
+  "note": "Automation marker to enable PR without altering existing workflow."
+}
