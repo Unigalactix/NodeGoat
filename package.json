@@ -36,7 +36,8 @@
     "docker-mongo": "docker run -p 27017:27017 --name mongo  mongo:latest",
     "start-infra": "docker-compose up",
     "stop-infra": "docker-compose down",
-    "cy:verify": "cypress verify"
+    "cy:verify": "cypress verify",
+    "test:jest": "jest"
   },
   "devDependencies": {
     "async": "^2.0.0-rc.4",
@@ -53,6 +54,7 @@
     "grunt-mocha-test": "^0.12.7",
     "grunt-npm-install": "^0.3.0",
     "grunt-retire": "^0.3.12",
+    "jest": "^30.2.0",
     "jshint": "2.12.0",
     "mocha": "^2.4.5",
     "nodemon": "^1.19.1",
