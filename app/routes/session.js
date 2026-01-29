@@ -1,7 +1,9 @@
 const UserDAO = require("../data/user-dao").UserDAO;
 const AllocationsDAO = require("../data/allocations-dao").AllocationsDAO;
+const jwt = require("jsonwebtoken");
 const {
-    environmentalScripts
+    environmentalScripts,
+    cookieSecret
 } = require("../../config/config");
 
 /* The SessionHandler must be constructed with a connected db */
@@ -10,6 +12,57 @@ function SessionHandler(db) {
 
     const userDAO = new UserDAO(db);
     const allocationsDAO = new AllocationsDAO(db);
+
+    // JWT Configuration
+    const JWT_SECRET = cookieSecret || "your-secret-key";
+    const JWT_EXPIRY = "24h";
+
+    // Helper function to generate JWT token
+    const generateToken = (userId, isAdmin = false) => {
+        return jwt.sign(
+            { userId, isAdmin },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRY }
+        );
+    };
+
+    // Helper function to verify JWT token
+    const verifyToken = (token) => {
+        try {
+            return jwt.verify(token, JWT_SECRET);
+        } catch (err) {
+            return null;
+        }
+    };
+
+    // Helper function to extract userId from request (JWT or session fallback)
+    const getUserIdFromRequest = (req) => {
+        // Try JWT token from cookies first
+        if (req.cookies && req.cookies.token) {
+            const decoded = verifyToken(req.cookies.token);
+            if (decoded) {
+                return decoded.userId;
+            }
+        }
+        // Fallback to session for backward compatibility
+        return req.session.userId;
+    };
+
+    // Helper function to extract user info from request
+    const getUserInfoFromRequest = (req) => {
+        // Try JWT token from cookies first
+        if (req.cookies && req.cookies.token) {
+            const decoded = verifyToken(req.cookies.token);
+            if (decoded) {
+                return decoded;
+            }
+        }
+        // Fallback to session for backward compatibility
+        if (req.session.userId) {
+            return { userId: req.session.userId };
+        }
+        return null;
+    };
 
     const prepareUserData = (user, next) => {
         // Generate random allocations
@@ -23,8 +76,9 @@ function SessionHandler(db) {
     };
 
     this.isAdminUserMiddleware = (req, res, next) => {
-        if (req.session.userId) {
-            return userDAO.getUserById(req.session.userId, (err, user) => {
+        const userInfo = getUserInfoFromRequest(req);
+        if (userInfo && userInfo.userId) {
+            return userDAO.getUserById(userInfo.userId, (err, user) => {
                return user && user.isAdmin ? next() : res.redirect("/login");
             });
         }
@@ -34,7 +88,8 @@ function SessionHandler(db) {
     };
 
     this.isLoggedInMiddleware = (req, res, next) => {
-        if (req.session.userId) {
+        const userInfo = getUserInfoFromRequest(req);
+        if (userInfo && userInfo.userId) {
             return next();
         }
         console.log("redirecting to login");
@@ -113,12 +168,26 @@ function SessionHandler(db) {
             // by wrapping the below code as a function callback for the method req.session.regenerate()
             // i.e:
             // `req.session.regenerate(() => {})`
+            
+            // Generate JWT token
+            const token = generateToken(user._id, user.isAdmin);
+            
+            // Set JWT token in httpOnly cookie
+            res.cookie("token", token, {
+                httpOnly: true,
+                maxAge: 24 * 60 * 60 * 1000 // 24 hours
+                // secure: true // Enable this in production with HTTPS
+            });
+            
+            // Also maintain session for backward compatibility
             req.session.userId = user._id;
             return res.redirect(user.isAdmin ? "/benefits" : "/dashboard");
         });
     };
 
     this.displayLogoutPage = (req, res) => {
+        // Clear JWT cookie
+        res.clearCookie("token");
         req.session.destroy(() => res.redirect("/"));
     };
 
@@ -236,6 +305,16 @@ function SessionHandler(db) {
                         // Set userId property. Required for left nav menu links
                         user.userId = user._id;
 
+                        // Generate JWT token for new user
+                        const token = generateToken(user._id, user.isAdmin || false);
+                        
+                        // Set JWT token in httpOnly cookie
+                        res.cookie("token", token, {
+                            httpOnly: true,
+                            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+                            // secure: true // Enable this in production with HTTPS
+                        });
+
                         return res.render("dashboard", {
                             ...user,
                             environmentalScripts
@@ -254,14 +333,14 @@ function SessionHandler(db) {
     };
 
     this.displayWelcomePage = (req, res, next) => {
-        let userId;
+        const userInfo = getUserInfoFromRequest(req);
 
-        if (!req.session.userId) {
+        if (!userInfo || !userInfo.userId) {
             console.log("welcome: Unable to identify user...redirecting to login");
             return res.redirect("/login");
         }
 
-        userId = req.session.userId;
+        const userId = userInfo.userId;
 
         userDAO.getUserById(userId, (err, doc) => {
             if (err) return next(err);

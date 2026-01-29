@@ -45,6 +45,7 @@ describe('SessionHandler - Characterization Tests', () => {
         mockDb = { collection: jest.fn() };
         sessionHandler = new SessionHandler(mockDb);
         mockReq = {
+            cookies: {},
             session: {
                 userId: null,
                 regenerate: jest.fn((callback) => callback()),
@@ -53,6 +54,8 @@ describe('SessionHandler - Characterization Tests', () => {
             body: {}
         };
         mockRes = {
+            cookie: jest.fn(),
+            clearCookie: jest.fn(),
             render: jest.fn(),
             redirect: jest.fn()
         };
@@ -125,9 +128,10 @@ describe('SessionHandler - Characterization Tests', () => {
     });
 
     describe('displayLogoutPage', () => {
-        it('should destroy session and redirect to /', (done) => {
+        it('should destroy session, clear JWT cookie, and redirect to /', (done) => {
             sessionHandler.displayLogoutPage(mockReq, mockRes);
             setImmediate(() => {
+                expect(mockRes.clearCookie).toHaveBeenCalledWith('token');
                 expect(mockReq.session.destroy).toHaveBeenCalled();
                 expect(mockRes.redirect).toHaveBeenCalledWith('/');
                 done();
@@ -197,14 +201,17 @@ describe('SessionHandler - Characterization Tests', () => {
             });
         });
 
-        it('should NOT regenerate session on login (A2 vulnerability)', (done) => {
+        it('should set JWT token cookie on login', (done) => {
             const mockUser = { _id: '123', userName: 'testuser', isAdmin: false };
             mockUserDAOInstance.validateLogin.mockImplementation((userName, password, callback) => {
                 callback(null, mockUser);
             });
             sessionHandler.handleLoginRequest(mockReq, mockRes, mockNext);
             setImmediate(() => {
-                expect(mockReq.session.regenerate).not.toHaveBeenCalled();
+                expect(mockRes.cookie).toHaveBeenCalledWith('token', expect.any(String), expect.objectContaining({
+                    httpOnly: true,
+                    maxAge: 24 * 60 * 60 * 1000
+                }));
                 done();
             });
         });
@@ -282,7 +289,7 @@ describe('SessionHandler - Characterization Tests', () => {
             });
         });
 
-        it('should create user and render dashboard on success', (done) => {
+        it('should create user, set JWT token, and render dashboard on success', (done) => {
             const mockUser = { _id: '789', userName: 'newuser', firstName: 'John', lastName: 'Doe' };
             mockUserDAOInstance.getUserByUserName.mockImplementation((userName, callback) => {
                 callback(null, null);
@@ -297,6 +304,10 @@ describe('SessionHandler - Characterization Tests', () => {
             setImmediate(() => {
                 expect(mockReq.session.regenerate).toHaveBeenCalled();
                 expect(mockReq.session.userId).toBe('789');
+                expect(mockRes.cookie).toHaveBeenCalledWith('token', expect.any(String), expect.objectContaining({
+                    httpOnly: true,
+                    maxAge: 24 * 60 * 60 * 1000
+                }));
                 expect(mockRes.render).toHaveBeenCalledWith('dashboard', expect.objectContaining({
                     userId: '789'
                 }));

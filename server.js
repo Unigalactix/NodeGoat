@@ -3,6 +3,7 @@
 const express = require("express");
 const favicon = require("serve-favicon");
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 const session = require("express-session");
 // const csrf = require('csurf');
 const consolidate = require("consolidate"); // Templating library adapter for Express
@@ -73,6 +74,9 @@ MongoClient.connect(db, (err, db) => {
         // Mandatory in Express v4
         extended: false
     }));
+
+    // Enable cookie parsing middleware
+    app.use(cookieParser());
 
     // Enable session management using express middleware
     app.use(session({
