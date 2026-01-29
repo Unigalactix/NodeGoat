@@ -23,9 +23,6 @@ report*.html
 test/e2e/screenshots/
 test/e2e/videos/
 
-# Jest coverage
-coverage/
-
 # ignore sensitive files
 .env.local
 .env
