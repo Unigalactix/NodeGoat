@@ -136,6 +136,16 @@ module.exports = function(grunt) {
                 jsRepository: "https://raw.github.com/bekk/retire.js/master/repository/jsrepository.json",
                 nodeRepository: "https://raw.github.com/bekk/retire.js/master/repository/npmrepository.json",
             }
+        },
+        shell: {
+            jest: {
+                command: "npm run test:jest",
+                options: {
+                    stdout: true,
+                    stderr: true,
+                    failOnError: true
+                }
+            }
         }
 
     });
@@ -151,6 +161,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks("grunt-retire"); // run as: grunt retire
     grunt.loadNpmTasks("grunt-if");
     grunt.loadNpmTasks("grunt-npm-install");
+    grunt.loadNpmTasks("grunt-shell");
 
     // Making grunt default to force in order not to break the project.
     grunt.option("force", true);
@@ -181,7 +192,10 @@ module.exports = function(grunt) {
     grunt.registerTask("precommit", ["jsbeautifier", "jshint"]);
 
     // Test task.
-    grunt.registerTask("test", ["env:test", "mochaTest:unit"]);
+    grunt.registerTask("test", ["env:test", "mochaTest:unit", "shell:jest"]);
+
+    // Jest unit test task.
+    grunt.registerTask("testunit", ["env:test", "shell:jest"]);
 
     // Security test task.
     grunt.registerTask("testsecurity", ["env:test", "if:testSecurityDependenciesInstalled"]);
