@@ -54,9 +54,11 @@ grunt test
 
 ## Test Results
 
-All 15 tests currently pass against the existing implementation:
+All 20 tests currently pass against the existing implementation:
 
 - Constructor: 1 test
+- isAdminUserMiddleware: 4 tests
+- displayLogoutPage: 1 test  
 - isLoggedInMiddleware: 2 tests
 - displayLoginPage: 1 test
 - handleLoginRequest: 3 tests

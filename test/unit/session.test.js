@@ -73,6 +73,68 @@ describe('SessionHandler - Characterization Tests', () => {
         });
     });
 
+
+    describe('isAdminUserMiddleware', () => {
+        it('should redirect to /login when no userId in session', () => {
+            mockReq.session.userId = null;
+            sessionHandler.isAdminUserMiddleware(mockReq, mockRes, mockNext);
+            expect(mockRes.redirect).toHaveBeenCalledWith('/login');
+            expect(mockNext).not.toHaveBeenCalled();
+        });
+
+        it('should redirect to /login when user is not admin', (done) => {
+            mockReq.session.userId = '123';
+            mockUserDAOInstance.getUserById.mockImplementation((userId, callback) => {
+                callback(null, { _id: '123', userName: 'testuser', isAdmin: false });
+            });
+            sessionHandler.isAdminUserMiddleware(mockReq, mockRes, mockNext);
+            setImmediate(() => {
+                expect(mockUserDAOInstance.getUserById).toHaveBeenCalledWith('123', expect.any(Function));
+                expect(mockRes.redirect).toHaveBeenCalledWith('/login');
+                expect(mockNext).not.toHaveBeenCalled();
+                done();
+            });
+        });
+
+        it('should call next() when user is admin', (done) => {
+            mockReq.session.userId = '456';
+            mockUserDAOInstance.getUserById.mockImplementation((userId, callback) => {
+                callback(null, { _id: '456', userName: 'admin', isAdmin: true });
+            });
+            sessionHandler.isAdminUserMiddleware(mockReq, mockRes, mockNext);
+            setImmediate(() => {
+                expect(mockUserDAOInstance.getUserById).toHaveBeenCalledWith('456', expect.any(Function));
+                expect(mockNext).toHaveBeenCalled();
+                expect(mockRes.redirect).not.toHaveBeenCalled();
+                done();
+            });
+        });
+
+        it('should redirect to /login when user is null', (done) => {
+            mockReq.session.userId = '789';
+            mockUserDAOInstance.getUserById.mockImplementation((userId, callback) => {
+                callback(null, null);
+            });
+            sessionHandler.isAdminUserMiddleware(mockReq, mockRes, mockNext);
+            setImmediate(() => {
+                expect(mockRes.redirect).toHaveBeenCalledWith('/login');
+                expect(mockNext).not.toHaveBeenCalled();
+                done();
+            });
+        });
+    });
+
+    describe('displayLogoutPage', () => {
+        it('should destroy session and redirect to /', (done) => {
+            sessionHandler.displayLogoutPage(mockReq, mockRes);
+            setImmediate(() => {
+                expect(mockReq.session.destroy).toHaveBeenCalled();
+                expect(mockRes.redirect).toHaveBeenCalledWith('/');
+                done();
+            });
+        });
+    });
+
     describe('isLoggedInMiddleware', () => {
         it('should redirect to /login when no userId in session', () => {
             mockReq.session.userId = null;
@@ -111,7 +173,7 @@ describe('SessionHandler - Characterization Tests', () => {
                 callback({ noSuchUser: true }, null);
             });
             sessionHandler.handleLoginRequest(mockReq, mockRes, mockNext);
-            setTimeout(() => {
+            setImmediate(() => {
                 expect(mockRes.render).toHaveBeenCalledWith('login', {
                     userName: 'testuser',
                     password: '',
@@ -119,7 +181,7 @@ describe('SessionHandler - Characterization Tests', () => {
                     environmentalScripts: []
                 });
                 done();
-            }, 10);
+            });
         });
 
         it('should redirect non-admin user to /dashboard on success', (done) => {
@@ -128,11 +190,11 @@ describe('SessionHandler - Characterization Tests', () => {
                 callback(null, mockUser);
             });
             sessionHandler.handleLoginRequest(mockReq, mockRes, mockNext);
-            setTimeout(() => {
+            setImmediate(() => {
                 expect(mockReq.session.userId).toBe('123');
                 expect(mockRes.redirect).toHaveBeenCalledWith('/dashboard');
                 done();
-            }, 10);
+            });
         });
 
         it('should NOT regenerate session on login (A2 vulnerability)', (done) => {
@@ -141,10 +203,10 @@ describe('SessionHandler - Characterization Tests', () => {
                 callback(null, mockUser);
             });
             sessionHandler.handleLoginRequest(mockReq, mockRes, mockNext);
-            setTimeout(() => {
+            setImmediate(() => {
                 expect(mockReq.session.regenerate).not.toHaveBeenCalled();
                 done();
-            }, 10);
+            });
         });
     });
 
@@ -214,10 +276,10 @@ describe('SessionHandler - Characterization Tests', () => {
                 callback(null);
             });
             sessionHandler.handleSignup(mockReq, mockRes, mockNext);
-            setTimeout(() => {
+            setImmediate(() => {
                 expect(mockRes.render).toHaveBeenCalledWith('dashboard', expect.anything());
                 done();
-            }, 10);
+            });
         });
 
         it('should create user and render dashboard on success', (done) => {
@@ -232,14 +294,14 @@ describe('SessionHandler - Characterization Tests', () => {
                 callback(null);
             });
             sessionHandler.handleSignup(mockReq, mockRes, mockNext);
-            setTimeout(() => {
+            setImmediate(() => {
                 expect(mockReq.session.regenerate).toHaveBeenCalled();
                 expect(mockReq.session.userId).toBe('789');
                 expect(mockRes.render).toHaveBeenCalledWith('dashboard', expect.objectContaining({
                     userId: '789'
                 }));
                 done();
-            }, 10);
+            });
         });
     });
 
@@ -257,12 +319,12 @@ describe('SessionHandler - Characterization Tests', () => {
                 callback(null, mockUser);
             });
             sessionHandler.displayWelcomePage(mockReq, mockRes, mockNext);
-            setTimeout(() => {
+            setImmediate(() => {
                 expect(mockRes.render).toHaveBeenCalledWith('dashboard', expect.objectContaining({
                     userId: '123'
                 }));
                 done();
-            }, 10);
+            });
         });
     });
 });
